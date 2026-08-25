@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluasi Pendaftaran Admin Terakhir</title>
+
+    <!-- Library Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f9f9f9; color: #000; }
+
+        /* ========== HALAMAN 1 (FORMULIR) ========== */
+        #halaman-formulir { max-width: 600px; margin: 0 auto; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); min-height: 100vh; position: relative; padding-bottom: 80px; transition: opacity 1s ease; }
+        .header { background: linear-gradient(to bottom, #00bfff, #00a0e0); padding: 30px 20px; text-align: center; color: #000; border-bottom: 5px solid #444; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: bold; letter-spacing: 1px; }
+        .header h2 { margin: 10px 0; font-size: 22px; font-weight: bold; }
+        .header h3 { margin: 0; font-size: 24px; font-weight: bold; }
+        .content { padding: 30px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 10px; font-size: 16px; }
+        .upload-box { border: 3px solid #000; border-radius: 15px; width: 100%; max-width: 300px; aspect-ratio: 672 / 986; margin: 0 auto 30px auto; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background-color: #fff; position: relative; overflow: hidden; box-sizing: border-box; }
+        .upload-box p { font-weight: bold; font-size: 16px; margin: 0 0 20px 0; line-height: 1.4; }
+        .upload-btn { background-color: #ccc; border: none; padding: 8px 15px; font-size: 14px; cursor: pointer; color: #333; border-radius: 4px; }
+        .input-line { width: 100%; border: none; border-bottom: 2px solid #000; padding: 5px 0; font-size: 16px; outline: none; background: transparent; transition: border-color 0.3s; }
+        .input-line::placeholder { color: #999; font-style: italic; }
+        .input-line.error { border-bottom: 2px solid red; }
+        .error-message { color: red; font-size: 12px; margin-top: 5px; display: none; }
+        .epat-section { margin-top: 40px; font-size: 14px; line-height: 1.6; }
+        .epat-section h4 { margin: 0 0 5px 0; font-size: 16px; }
+        .epat-section p { margin: 0 0 15px 0; }
+        .btn-lanjut { position: absolute; bottom: 20px; right: 20px; background-color: #009fe3; color: #000; border: none; padding: 10px 20px; font-size: 14px; cursor: pointer; font-weight: 500; transition: background-color 0.3s, color 0.3s; }
+        .btn-lanjut:hover { background-color: #0085c0; }
+        .btn-lanjut.berikutnya { background-color: #4CAF50; color: white; }
+        .btn-lanjut.berikutnya:hover { background-color: #45a049; }
+
+        /* ========== HALAMAN 2 (KODE ZIP) ========== */
+        #halaman-zip { display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(225deg, #00bfff 0%, #00a0e0 100%); justify-content: center; align-items: center; flex-direction: column; text-align: center; color: #fff; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 1s ease; }
+        #halaman-zip.active { opacity: 1; pointer-events: auto; }
+        .timer-text { font-size: 48px; font-weight: bold; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .loading-text { font-size: 18px; margin-bottom: 40px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+        .zip-box { background-color: #fff; color: #000; padding: 20px 30px; border-radius: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 15px; }
+        #kode-zip-display { font-size: 24px; font-weight: bold; letter-spacing: 2px; margin: 0; }
+        .btn-salin { background-color: #009fe3; color: #fff; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; }
+        .btn-salin:hover { background-color: #0085c0; }
+        .kode-wrapper { display: none; }
+
+        /* ========== PANEL ADMIN ========== */
+        #panel-admin { display: none; position: fixed; top: 20px; right: 20px; width: 250px; background: #fff; border: 3px solid #009fe3; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 3000; padding: 15px; }
+        #panel-admin h3 { margin: 0 0 10px 0; color: #009fe3; font-size: 18px; text-align: center; }
+        #panel-admin button { display: block; width: 100%; margin-bottom: 10px; background: #009fe3; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        #panel-admin button:hover { background: #0085c0; }
+
+        /* ========== HALAMAN 3 (KUIS) ========== */
+        #halaman-kuis { display: none; max-width: 600px; margin: 0 auto; background: #fff; min-height: 100vh; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative; }
+        .kuis-header { background: linear-gradient(to bottom, #00bfff, #00a0e0); padding: 20px; text-align: center; border-bottom: 5px solid #444; color: #000; }
+        .kuis-header h2, .kuis-header h3 { margin: 0; }
+        .kuis-info-bar { display: flex; justify-content: space-between; padding: 15px 30px; border-bottom: 2px solid #000; font-weight: bold; font-size: 16px; align-items: center; }
+        .kuis-soal-container { padding: 20px 30px; display: none; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #009fe3; }
+        input:checked + .slider:before { transform: translateX(24px); }
+        .soal-item { margin-bottom: 20px; }
+        .soal-item p { font-weight: bold; margin-bottom: 10px; }
+        .soal-item label { display: block; margin-left: 10px; cursor: pointer; }
+        #btn-selesai { display: none; margin: 20px auto 40px auto; background: #009fe3; color: #000; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        #btn-selesai:hover { background: #0085c0; }
+
+        /* ========== HALAMAN ADMIN ========== */
+        #halaman-admin { display: none; max-width: 900px; margin: 0 auto; background: #fff; min-height: 100vh; padding: 30px; box-sizing: border-box; }
+        #halaman-admin h1 { color: #009fe3; text-align: center; }
+
+        /* ========== HALAMAN SUKSES ========== */
+        #halaman-sukses { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, #00bfff, #0066cc); justify-content: center; align-items: center; flex-direction: column; z-index: 2000; text-align: center; overflow: hidden; }
+        #halaman-sukses.active { display: flex; }
+        .sukses-kartu { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-width: 400px; width: 90%; z-index: 10; animation: popIn 0.5s ease-out; }
+        .sukses-icon { font-size: 60px; margin-bottom: 10px; }
+        .sukses-kartu h1 { color: #0066cc; margin: 10px 0; font-size: 28px; }
+        .sukses-kartu p { color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+        .sukses-email-box { background: #f0f8ff; border: 2px solid #00bfff; border-radius: 10px; padding: 15px; margin-bottom: 20px; }
+        .sukses-email-box p { margin: 0; font-size: 14px; color: #555; }
+        #sukses-email { margin: 10px 0 0 0; font-size: 18px; font-weight: bold; color: #000; }
+        .sukses-note { font-size: 12px; color: #888; margin-bottom: 20px; }
+        .btn-tutup-proses { background: #4CAF50; color: white; border: none; padding: 10px 25px; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .confetti { position: absolute; width: 10px; height: 10px; background-color: #f00; opacity: 0.9; animation: fall 3s linear infinite; }
+        @keyframes fall { 0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0.5; } }
+
+        /* ========== TOAST ========== */
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background-color: #f44336; color: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 9999; transition: transform 0.5s ease, opacity 0.5s ease; opacity: 0; font-size: 14px; font-weight: bold; text-align: center; max-width: 90%; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.success { background-color: #4CAF50; }
+
+        /* ========== POPUP KONFIRMASI ========== */
+        #popup-konfirmasi { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 2000; }
+        .popup-box { background: #fff; padding: 30px; border-radius: 10px; text-align: center; max-width: 300px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .popup-box h3 { margin-top: 0; }
+        .popup-actions { display: flex; justify-content: space-around; margin-top: 20px; }
+        .popup-btn { border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .popup-btn.iya { background: #4CAF50; color: white; }
+        .popup-btn.tidak { background: #f44336; color: white; }
+
+        @media (max-width: 480px) {
+            #halaman-formulir { width: 100%; box-shadow: none; }
+            .header h1 { font-size: 20px; } .header h2 { font-size: 18px; } .header h3 { font-size: 18px; }
+            .upload-box { max-width: 250px; } .timer-text { font-size: 36px; } .zip-box { padding: 15px; }
+            .kuis-info-bar { font-size: 14px; padding: 10px 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- ========== HALAMAN 1 ========== -->
+    <div id="halaman-formulir">
+        <div class="header">
+            <h1>EVALUASI PENDAFTARAN</h1>
+            <h2>AVARIXEN TERAKHIR</h2>
+            <h3>2026/2027</h3>
+        </div>
+        <div class="content">
+            <div class="form-group">
+                <label>Kartu PAA*:</label>
+                <div class="upload-box" id="upload-box">
+                    <p id="upload-text">Unggah Kartu<br>PAA anda disini!</p>
+                    <button type="button" class="upload-btn" onclick="document.getElementById('file-input').click()">Unggah</button>
+                    <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="validateImage(this)">
+                    <p id="upload-status" style="font-size: 12px; margin-top: 10px; color: red; font-weight: normal; display: none;"></p>
+                </div>
+                <p id="upload-error" class="error-message" style="text-align: center; display: none;">Kartu PAA wajib diunggah (672x986)!</p>
+            </div>
+            <div class="form-group">
+                <label>Nama Lengkap:</label>
+                <input type="text" class="input-line" id="nama" placeholder="Nama Lengkap">
+                <p class="error-message" id="err-nama">Kolom ini wajib diisi.</p>
+            </div>
+            <div class="form-group">
+                <label>Username:</label>
+                <input type="text" class="input-line" id="username" placeholder="Ada pada Kartu PAA">
+                <p class="error-message" id="err-username">Kolom ini wajib diisi.</p>
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="text" class="input-line" id="password" placeholder="Ada pada kartu PAA">
+                <p class="error-message" id="err-password">Kolom ini wajib diisi.</p>
+            </div>
+            <div class="form-group" style="display: flex; align-items: flex-end; gap: 10px;">
+                <div style="flex-grow: 1;">
+                    <label>Kode ZIP:</label>
+                    <input type="text" class="input-line" id="kode_zip" placeholder="Menunggu sistem..." readonly>
+                    <p class="error-message" id="err-kode_zip" style="display: none;">Kode salah!</p>
+                </div>
+                <button type="button" id="btn-tambah-kode" class="upload-btn" style="display: none; background-color: #009fe3; color: white; font-size: 20px; font-weight: bold; height: 40px; width: 40px; border-radius: 5px;">+</button>
+            </div>
+            <div class="epat-section">
+                <h4>EPAT</h4>
+                <p>EPAT adalah singkatan dari Evaluasi Pendaftaran Admin Terakhir. Maksudnya, EPAT sebagai konfirmasi, setelah EPA selesai dikerjakan, pengguna menunggu hasil melewati email yang telah tertera. Isilah formulir email ini agar anda dapat mengetahui, apakah anda lulus ataupun tidak. Jika tidak lulus, anda dapat mengulanginya 1 bulan setelah pendaftaran gagal. Sekarang, isilah formulir email tersebut</p>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" class="input-line" id="email" placeholder="Email yang masih aktif!">
+                    <p class="error-message" id="err-email">Kolom ini wajib diisi.</p>
+                </div>
+            </div>
+        </div>
+        <button class="btn-lanjut" id="btn-lanjut" onclick="prosesLanjut()">Lanjutkan</button>
+    </div>
+
+    <!-- ========== PANEL ADMIN ========== -->
+    <div id="panel-admin">
+        <h3>Panel Admin</h3>
+        <button onclick="pindahHalamanAdmin(1)">Halaman 1 (Formulir)</button>
+        <button onclick="pindahHalamanAdmin(2)">Halaman 2 (Kode ZIP)</button>
+        <button onclick="pindahHalamanAdmin(3)">Halaman 3 (Kuis)</button>
+        <button onclick="pindahHalamanAdmin(4)" style="background: #4CAF50;">Halaman Admin (Koreksi)</button>
+        <button onclick="eksporSemuaData()" style="background: #FF9800;">📦 Ekspor Semua Data</button>
+        <button onclick="hapusSemuaPeserta()" style="background: #D32F2F; color: white;">🗑️ Hapus Semua Data</button>
+    </div>
+
+    <!-- ========== HALAMAN 2 ========== -->
+    <div id="halaman-zip">
+        <div class="timer-text" id="timer">10</div>
+        <div class="loading-text">Memproses kode ZIP...</div>
+        <div class="kode-wrapper" id="kode-wrapper">
+            <h2 style="margin-bottom: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Kode ZIP Anda</h2>
+            <div class="zip-box">
+                <p id="kode-zip-display">2512JHs147</p>
+                <button class="btn-salin" style="font-size: 24px; font-weight: bold; height: 45px; width: 45px; padding: 0; display: flex; justify-content: center; align-items: center;" onclick="tambahkanKode()">+</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== HALAMAN 3 (KUIS) ========== -->
+    <div id="halaman-kuis">
+        <div class="kuis-header">
+            <h2>PERTANYAAN Evaluasi</h2>
+            <h3>Pendaftaran Admin Terakhir</h3>
+        </div>
+        <div class="kuis-info-bar">
+            <span id="kuis-nama">Nama: --</span>
+            <span id="timer-kuis">Timer: [90 menit]</span>
+        </div>
+        <div class="kuis-info-bar">
+            <span id="waktu-kuis">Waktu: 90 Menit</span>
+            <label class="switch">
+                <input type="checkbox" id="timer-toggle" onchange="toggleKuis()">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <div class="kuis-soal-container" id="kuis-soal-container">
+            <div class="soal-item"><p>1. Apa yang dimaksud dengan Avarixen?</p>
+                <label><input type="radio" name="soal1" value="A"> A. Tim yang mementingkan uang</label>
+                <label><input type="radio" name="soal1" value="B"> B. Tim ekonomi (Robux) yang serakah</label>
+                <label><input type="radio" name="soal1" value="C"> C. Tim utusan Roblox langsung</label>
+                <label><input type="radio" name="soal1" value="D"> D. Tim ekonomi (Roblox) yang murah hati</label>
+            </div>
+            <div class="soal-item"><p>2. Mengapa Avarixen mengubah namanya yang dari "Ravexarz" menjadi "Avarixen"?</p>
+                <label><input type="radio" name="soal2" value="A"> A. Karena pemimpinnya saat itu serakah</label>
+                <label><input type="radio" name="soal2" value="B"> B. Karena ekonomi tak seimbang, Ravexarz jadi Avarixen.</label>
+                <label><input type="radio" name="soal2" value="C"> C. Karena penyusup, Ravexarz ditutup sementara: ganti identitas & perketat keamanan.</label>
+                <label><input type="radio" name="soal2" value="D"> D. Karena pemimpin saat itu merasa bosan dan menggnti identitas.</label>
+            </div>
+            <div class="soal-item"><p>3. Pada kata "Ava" pada nama "Avarixen" memiliki arti, yakni ...</p>
+                <label><input type="radio" name="soal3" value="A"> A. "Ava" = Avatar Roblox</label>
+                <label><input type="radio" name="soal3" value="B"> B. "Ava" = Ravexarz</label>
+                <label><input type="radio" name="soal3" value="C"> C. "Ava" = Avarixen (tidak memiliki perubahan dan hanya kiasan)</label>
+                <label><input type="radio" name="soal3" value="D"> D. "Ava" = Robux</label>
+            </div>
+            <div class="soal-item"><p>4. JIka ada penyusup masuk, apa yang harus dilakukan?</p>
+                <label><input type="radio" name="soal4" value="A"> A. Membiarkan saja</label>
+                <label><input type="radio" name="soal4" value="B"> B. Mengganti identitas dan keamanan</label>
+                <label><input type="radio" name="soal4" value="C"> C. Menutup tim saja (tanpa ada usaha)</label>
+                <label><input type="radio" name="soal4" value="D"> D. Hanya panik</label>
+            </div>
+            <div class="soal-item"><p>5. Pada kata "Rixen" pada nama "Avarixen" apakah memiliki arti? Sebutkan alasannya!</p>
+                <label><input type="radio" name="soal5" value="A"> A. Punya, yaitu "R" mengambil inisial dari "Roblox". Dan selanjutnya adalah hiasan saja.</label>
+                <label><input type="radio" name="soal5" value="B"> B. Tidak, karena pemilik tidak menyampaikan secara langsung. Dan hanya menjadi usernam Roblox saja.</label>
+                <label><input type="radio" name="soal5" value="C"> C. Tidak tahu</label>
+                <label><input type="radio" name="soal5" value="D"> D. Mungkin</label>
+            </div>
+            <div class="soal-item"><p>6. Apa nama tim setelah "Ravexarz"?</p>
+                <label><input type="radio" name="soal6" value="A"> A. Tidak memiliki perubahan apa saja.</label>
+                <label><input type="radio" name="soal6" value="B"> B. Afz</label>
+                <label><input type="radio" name="soal6" value="C"> C. Rip</label>
+                <label><input type="radio" name="soal6" value="D"> D. Avarixen</label>
+            </div>
+            <div class="soal-item"><p>7. Mengapa saat ini Avarixen memiliki EPA dan EPAT, padahal dulu langsung menjadi admin?</p>
+                <label><input type="radio" name="soal7" value="A"> A. Karena hanya iseng</label>
+                <label><input type="radio" name="soal7" value="B"> B. Karena dulu ada penyusup dan memerketat keamanan.</label>
+                <label><input type="radio" name="soal7" value="C"> C. Karena pendiri Ravexarz waktu itu dipaksa oleh ketua</label>
+                <label><input type="radio" name="soal7" value="D"> D. Karena hanya ingin mengetes saja</label>
+            </div>
+            <div class="soal-item"><p>8. Manakah tim yang lebih duluan berdiri (menurut sejarahnya Avarixen)?</p>
+                <label><input type="radio" name="soal8" value="A"> A. Avarixen</label>
+                <label><input type="radio" name="soal8" value="B"> B. Ravexarz</label>
+                <label><input type="radio" name="soal8" value="C"> C. Afz</label>
+                <label><input type="radio" name="soal8" value="D"> D. SPASE CREW</label>
+            </div>
+            <div class="soal-item"><p>9. Siapakah yang mendirikan Ravexarz?</p>
+                <label><input type="radio" name="soal9" value="A"> A. Devandi Fatahillah</label>
+                <label><input type="radio" name="soal9" value="B"> B. Muhammad Kenzie Ariyalana Datuk</label>
+                <label><input type="radio" name="soal9" value="C"> C. Duta Wiratama Lubis</label>
+                <label><input type="radio" name="soal9" value="D"> D. Anantacenta Reugra Abiraya</label>
+            </div>
+            <div class="soal-item"><p>10. Apakah Avarixen lebih maju dibandingkan Ravexarz?</p>
+                <label><input type="radio" name="soal10" value="A"> A. Iya, karena sekarang memiliki lebih banyak anggota dan calon admin</label>
+                <label><input type="radio" name="soal10" value="B"> B. Tidak, karena dulu anggota dapat masuk menjadi Admin tanpa EPA dan EPAT</label>
+                <label><input type="radio" name="soal10" value="C"> C. Bisa jadi</label>
+                <label><input type="radio" name="soal10" value="D"> D. Tidak tahu!</label>
+            </div>
+            <div class="soal-item"><p>11. Apakah seorang anggota, calon admin, dan admin berangkat boleh mengkritik?</p>
+                <label><input type="radio" name="soal11" value="A"> A. Boleh, karena hal tersebut menjadi salah satu kunci kemajuan Avarixen.</label>
+                <label><input type="radio" name="soal11" value="B"> B. Tidak, karena Avarixen adalah tim yang anti-kritik dan tidak semena-mena kepada anggota dan admin.</label>
+                <label><input type="radio" name="soal11" value="C"> C. Mungkin, jika adminnya tidak pernah membuka kotak pesan kritik.</label>
+                <label><input type="radio" name="soal11" value="D"> D. Boleh, kritik hingga wajah dan postur tubuh admin yang menanggapi pesan kritik (Rasisme).</label>
+            </div>
+            <div class="soal-item"><p>12. Mengapa soal EPAT saat ini dimudahkan?</p>
+                <label><input type="radio" name="soal12" value="A"> A. Karena pihak yang bertanggungjawab tidak ingin bertanggungjawab dan tidak peduli.</label>
+                <label><input type="radio" name="soal12" value="B"> B. Karena dulu soal EPA dan EPAT setara dengan soal kuliahan dan tidak semua orang bisa menjawabnya hanya dengan niat saja.</label>
+                <label><input type="radio" name="soal12" value="C"> C. Karena saat ini soalnya sangat mudah.</label>
+                <label><input type="radio" name="soal12" value="D"> D. Karena dulu Ketua dan Pendiri memiliki hubungan yang panas.</label>
+            </div>
+            <div class="soal-item"><p>13. Apa penyebab utama hubungan Pendiri dan Ketua memanas?</p>
+                <label><input type="radio" name="soal13" value="A"> A. Karena bedanya pendapat saat melakukan kegiatan musyawarah.</label>
+                <label><input type="radio" name="soal13" value="B"> B. Tidak ada informasi secara langsunng yang disampaikan.</label>
+                <label><input type="radio" name="soal13" value="C"> C. Karena Ketua melakukan pelanggaran yang membuat Pendiri marah besar kepadanya.</label>
+                <label><input type="radio" name="soal13" value="D"> D. Karena Pendiri saat itu perasaannya sedang tidak nyaman dan melamiaskannya ke ketua.</label>
+            </div>
+            <div class="soal-item"><p>14. Siapakah yang berhak mendapatkan pangkat "Pendiri" (Saat era Ravexarz)?</p>
+                <label><input type="radio" name="soal14" value="A"> A. Orang-orang yang baru saja masuk ke anggota Ravexarz.</label>
+                <label><input type="radio" name="soal14" value="B"> B. Orang-orang yang membantu berrdirinya Ravexarz.</label>
+                <label><input type="radio" name="soal14" value="C"> C. Penyusup yang merusak nama baik Ravexarz.</label>
+                <label><input type="radio" name="soal14" value="D"> D. Hanya satu orang yang mendirikan Ravexarz.</label>
+            </div>
+            <div class="soal-item"><p>15. Siapa sajakah yang berhak mendapatkan pangkat "Pendiri" (Pada era Avarixen)?</p>
+                <label><input type="radio" name="soal15" value="A"> A. Tiga orang yang berhasil mengganti identitas saat setelah terjadinya penyusupan di Ravexarz.</label>
+                <label><input type="radio" name="soal15" value="B"> B. Orang yang terpercaya dan ditunjuk oleh Pendiri.</label>
+                <label><input type="radio" name="soal15" value="C"> C. Anggota biasa yang tidak mengerti apapun tentang Avarixen.</label>
+                <label><input type="radio" name="soal15" value="D"> D. Hanya satu orang yang boleh memilikinya.</label>
+            </div>
+            <div class="soal-item"><p>16. Siapa sajakah yang berhak mendapatkan pangkat "Pemilik" (Pada era Avarixen)?</p>
+                <label><input type="radio" name="soal16" value="A"> A. Orang-orang yang sudah dipercayai oleh Pendiri atau Pemilik Avarixen.</label>
+                <label><input type="radio" name="soal16" value="B"> B. Tidak ada, agar Avarixen tidak akan pernah berkembang.</label>
+                <label><input type="radio" name="soal16" value="C"> C. Orang-orang sembarangan yang langsung ditunjuk oleh Pemilik atau Pendiri Avarixen.</label>
+                <label><input type="radio" name="soal16" value="D"> D. Wakil Owner saja.</label>
+                </div>
+                            <div class="soal-item"><p>17. EPA berfungsi untuk ...</p>
+                <label><input type="radio" name="soal17" value="A"> A. Mengetes.</label>
+                <label><input type="radio" name="soal17" value="B"> B. Konfirmasi.</label>
+                <label><input type="radio" name="soal17" value="C"> C. Mengetes tanggungjawab.</label>
+                <label><input type="radio" name="soal17" value="D"> D. Memilih pangkat secara acak.</label>
+            </div>
+            <div class="soal-item"><p>18. EPAT berfungsi untuk ...</p>
+                <label><input type="radio" name="soal18" value="A"> A. Mengetes.</label>
+                <label><input type="radio" name="soal18" value="B"> B. Konfirmasi.</label>
+                <label><input type="radio" name="soal18" value="C"> C. Mengetes tanggungjawab.</label>
+                <label><input type="radio" name="soal18" value="D"> D. Memilih pangkat secara acak.</label>
+            </div>
+            <div class="soal-item"><p>19. Apakah penggunaan AI untuk perkembangan Avarixen diperlukan?</p>
+                <label><input type="radio" name="soal19" value="A"> A. Iya, untuk membantu mencari jawaban saat melakukan kegiatan musyawarah.</label>
+                <label><input type="radio" name="soal19" value="B"> B. Tidak, karena terlalu bergantung kepada AI.</label>
+                <label><input type="radio" name="soal19" value="C"> C. Tidak tahu.</label>
+                <label><input type="radio" name="soal19" value="D"> D. Bisa jadi.</label>
+            </div>
+            <div class="soal-item"><p>20. Apakah saat ini Avarixen menggunakan AI?</p>
+                <label><input type="radio" name="soal20" value="A"> A. Tidak tahu.</label>
+                <label><input type="radio" name="soal20" value="B"> B. Mungkin.</label>
+                <label><input type="radio" name="soal20" value="C"> C. Bisa jadi.</label>
+                <label><input type="radio" name="soal20" value="D"> D. Iya.</label>
+            </div>
+            <button id="btn-selesai" onclick="tampilkanKonfirmasi()">Selesai</button>
+        </div>
+    </div>
+
+    <!-- ========== HALAMAN ADMIN ========== -->
+    <div id="halaman-admin" style="display: none; max-width: 900px; margin: 0 auto; background: #fff; min-height: 100vh; padding: 30px; box-sizing: border-box;">
+        <h1 style="color: #009fe3; text-align: center;">📋 Data Peserta EPAT</h1>
+        <div id="daftar-peserta" style="margin-top: 20px;"></div>
+        <div id="detail-peserta" style="display: none; margin-top: 30px; border: 2px solid #009fe3; border-radius: 10px; padding: 20px;">
+            <button onclick="kembaliKeDaftar()" style="background: #f44336; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; margin-bottom: 20px;">← Kembali ke Daftar</button>
+            <button onclick="unduhFilePeserta()" style="background: #2196F3; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">📥 Unduh File (Txt)</button>
+            <button onclick="hapusPeserta()" style="background: #E53935; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">🗑️ Hapus Peserta</button>
+            <h2 id="detail-nama" style="color: #009fe3; margin-top: 0;"></h2>
+            <div id="detail-info" style="margin-bottom: 20px;"></div>
+            <h3 style="margin-top: 0;">Preview Kartu PAA:</h3>
+            <div id="detail-kartu" style="border: 2px solid #ccc; border-radius: 10px; padding: 10px; max-width: 300px; background: #f9f9f9;"></div>
+        </div>
+    </div>
+
+    <!-- ========== HALAMAN SUKSES ========== -->
+    <div id="halaman-sukses">
+        <div id="confetti-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
+        <div class="sukses-kartu">
+            <div class="sukses-icon">🎉</div>
+            <h1>Selamat!</h1>
+            <p>Kamu telah menyelesaikan <strong>EPAT (Evaluasi Pendaftaran Admin Terakhir)</strong> dengan sukses.</p>
+            <div class="sukses-email-box">
+                <p><strong>📧 Hasil akan dikirim melalui email:</strong></p>
+                <p id="sukses-email">[Email Pengguna]</p>
+            </div>
+            <p class="sukses-note">Mohon tunggu 1x24 jam untuk proses verifikasi.</p>
+            <button class="btn-tutup-proses" onclick="window.location.reload()">Tutup Proses</button>
+        </div>
+    </div>
+
+    <!-- ========== POPUP KONFIRMASI ========== -->
+    <div id="popup-konfirmasi">
+        <div class="popup-box">
+            <h3>Apakah anda sudah yakin?</h3>
+            <div class="popup-actions">
+                <button class="popup-btn iya" onclick="selesaiKuis()">Yakin</button>
+                <button class="popup-btn tidak" onclick="tutupKonfirmasi()">Tidak</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // KONFIGURASI FIREBASE (EPAT)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCe-6z9elbA1G_1lLxuVWfLWzaawkd-nxw",
+            authDomain: "epat-b2a9d.firebaseapp.com",
+            projectId: "epat-b2a9d",
+            storageBucket: "epat-b2a9d.firebasestorage.app",
+            messagingSenderId: "357087961201",
+            appId: "1:357087961201:web:07f237a3b43121c763bbd0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let gambarValid = false;
+        let sudahKembaliDariHalaman2 = false;
+        let intervalTimerKuis;
+
+        function showToast(message, type = 'error') {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.className = `toast show ${type}`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function validateImage(input) {
+            const statusEl = document.getElementById('upload-status');
+            const boxEl = document.getElementById('upload-box');
+            const errUpload = document.getElementById('upload-error');
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        const width = this.width;
+                        const height = this.height;
+                        if (width === 672 && height === 986) {
+                            statusEl.style.display = 'none'; errUpload.style.display = 'none'; boxEl.style.borderColor = "#000"; gambarValid = true;
+                            boxEl.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;">`;
+                            boxEl.innerHTML += `<button type="button" class="upload-btn" style="position: absolute; bottom: 10px; right: 10px; z-index: 10; border: 1px solid #000;" onclick="location.reload()">Hapus</button>`;
+                        } else {
+                            statusEl.style.color = "red"; statusEl.style.display = 'block'; statusEl.innerText = `Ukuran salah! (Harus 672x986, kamu upload ${width}x${height})`; errUpload.style.display = 'none'; boxEl.style.borderColor = "red"; gambarValid = false; input.value = ""; 
+                        }
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function playSound() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+            oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            oscillator.start(); oscillator.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function playFanfare() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const notes = [523.25, 659.25, 783.99, 1046.50]; const durations = [0.15, 0.15, 0.15, 0.4];
+            notes.forEach((freq, index) => {
+                const oscillator = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+                oscillator.type = 'triangle'; oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime + index * durations[index]);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime + index * durations[index]); gainNode.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + index * durations[index] + 0.1); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + index * durations[index] + durations[index]);
+                oscillator.start(audioCtx.currentTime + index * durations[index]); oscillator.stop(audioCtx.currentTime + index * durations[index] + durations[index]);
+            });
+        }
+
+        function createConfetti() {
+            const container = document.getElementById('confetti-container'); const colors = ['#ff0', '#f00', '#0f0', '#00f', '#f0f', '#0ff'];
+            container.innerHTML = '';
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div'); confetti.className = 'confetti'; confetti.style.left = Math.random() * 100 + '%'; confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)]; confetti.style.animationDelay = Math.random() * 2 + 's'; confetti.style.animationDuration = (Math.random() * 2 + 3) + 's'; container.appendChild(confetti);
+            }
+        }
+
+        function pindahKeHalamanZip() {
+            const halamanForm = document.getElementById('halaman-formulir'); const halamanZip = document.getElementById('halaman-zip');
+            playSound(); halamanForm.style.opacity = '0';
+            setTimeout(() => { halamanForm.style.display = 'none'; halamanZip.classList.add('active'); mulaiTimer(); }, 1000);
+        }
+
+        function mulaiTimer() {
+            const timerEl = document.getElementById('timer'); const kodeWrapper = document.getElementById('kode-wrapper'); let waktu = 10;
+            timerEl.innerText = waktu;
+            const interval = setInterval(() => {
+                waktu--; timerEl.innerText = waktu;
+                if (waktu <= 0) { clearInterval(interval); timerEl.style.display = 'none'; document.querySelector('.loading-text').style.display = 'none'; kodeWrapper.style.display = 'block'; }
+            }, 1000);
+        }
+
+        function tambahkanKode() {
+            const kode = document.getElementById('kode-zip-display').innerText; playSound();
+            const halamanZip = document.getElementById('halaman-zip'); halamanZip.style.opacity = '0';
+            setTimeout(() => {
+                halamanZip.style.display = 'none'; const halamanForm = document.getElementById('halaman-formulir'); halamanForm.style.display = 'block'; halamanForm.style.opacity = '1';
+                sudahKembaliDariHalaman2 = true; const kodeInput = document.getElementById('kode_zip'); kodeInput.value = kode;
+                const btnTambah = document.getElementById('btn-tambah-kode'); btnTambah.style.display = 'block'; const btn = document.getElementById('btn-lanjut'); btn.innerText = "Berikutnya"; btn.classList.add('berikutnya');
+                showToast("Kode berhasil ditambahkan!", "success");
+            }, 1000);
+        }
+
+        function prosesLanjut() {
+            const namaInput = document.getElementById('nama').value.trim();
+            if (namaInput === "PPAPsAn") { document.getElementById('panel-admin').style.display = 'block'; showToast("Panel Admin berhasil dibuka!", "success"); return; }
+            if (sudahKembaliDariHalaman2) {
+                if (!document.getElementById('kode_zip').value.trim()) { showToast("Kode ZIP wajib diisi!"); return; }
+                const halamanForm = document.getElementById('halaman-formulir'); playSound(); halamanForm.style.opacity = '0';
+                setTimeout(() => { halamanForm.style.display = 'none'; bukaKuis(); }, 1000); return;
+            }
+            const inputs = [{ id: 'nama', errId: 'err-nama' }, { id: 'username', errId: 'err-username' }, { id: 'password', errId: 'err-password' }, { id: 'email', errId: 'err-email' }];
+            let semuaTerisi = true;
+            inputs.forEach(input => { const el = document.getElementById(input.id); const err = document.getElementById(input.errId); el.classList.remove('error'); err.style.display = 'none'; });
+            inputs.forEach(input => { const el = document.getElementById(input.id); const err = document.getElementById(input.errId); if (!el.value.trim()) { el.classList.add('error'); err.style.display = 'block'; semuaTerisi = false; } });
+            const errUpload = document.getElementById('upload-error'); const boxEl = document.getElementById('upload-box');
+            if (!gambarValid) { errUpload.style.display = 'block'; boxEl.style.borderColor = "red"; semuaTerisi = false; } else { errUpload.style.display = 'none'; boxEl.style.borderColor = "#000"; }
+            if (!semuaTerisi) { showToast("Harap isi semua kolom dan unggah Kartu PAA!"); return; }
+            pindahKeHalamanZip();
+        }
+
+        function bukaKuis() {
+            document.getElementById('halaman-kuis').style.display = 'block';
+            const nama = document.getElementById('nama').value; document.getElementById('kuis-nama').innerText = `Nama: ${nama}`; window.scrollTo(0, 0);
+        }
+
+        function toggleKuis() {
+            const toggle = document.getElementById('timer-toggle'); const soalContainer = document.getElementById('kuis-soal-container'); const waktuKuis = document.getElementById('waktu-kuis'); const timerKuis = document.getElementById('timer-kuis');
+            if (toggle.checked) {
+                toggle.disabled = true; soalContainer.style.display = 'block'; waktuKuis.innerText = "Waktu: 90:00"; timerKuis.innerText = "Timer: [Berjalan]"; mulaiTimerKuis(90 * 60); cekJawaban();
+            } else { soalContainer.style.display = 'none'; clearInterval(intervalTimerKuis); waktuKuis.innerText = "Waktu: 90 Menit"; timerKuis.innerText = "Timer: [90 menit]"; document.getElementById('btn-selesai').style.display = 'none'; }
+        }
+
+        function mulaiTimerKuis(totalDetik) {
+            const waktuKuis = document.getElementById('waktu-kuis'); let sisaDetik = totalDetik;
+            intervalTimerKuis = setInterval(() => {
+                if (sisaDetik <= 0) { clearInterval(intervalTimerKuis); waktuKuis.innerText = "Waktu: 00:00"; alert("Waktu habis!"); return; }
+                sisaDetik--; const menit = Math.floor(sisaDetik / 60); const detik = sisaDetik % 60; waktuKuis.innerText = `Waktu: ${menit.toString().padStart(2, '0')}:${detik.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function cekJawaban() {
+            const totalSoal = 20; let terjawab = 0;
+            for (let i = 1; i <= totalSoal; i++) {
+                const radios = document.getElementsByName(`soal${i}`);
+                for (let radio of radios) { if (radio.checked) { terjawab++; break; } }
+            }
+            if (terjawab === totalSoal) { document.getElementById('btn-selesai').style.display = 'block'; } else { document.getElementById('btn-selesai').style.display = 'none'; }
+        }
+
+        document.querySelectorAll('input[type="radio"]').forEach(radio => { radio.addEventListener('change', cekJawaban); });
+
+        function tampilkanKonfirmasi() { document.getElementById('popup-konfirmasi').style.display = 'flex'; }
+        function tutupKonfirmasi() { document.getElementById('popup-konfirmasi').style.display = 'none'; }
+
+        function selesaiKuis() {
+            document.getElementById('popup-konfirmasi').style.display = 'none';
+            simpanDataPeserta();
+            const radioButtons = document.querySelectorAll('input[type="radio"]'); radioButtons.forEach(radio => radio.checked = false);
+            const toggle = document.getElementById('timer-toggle'); toggle.disabled = false; toggle.checked = false;
+            document.getElementById('kuis-soal-container').style.display = 'none'; document.getElementById('waktu-kuis').innerText = "Waktu: 90 Menit"; document.getElementById('timer-kuis').innerText = "Timer: [90 menit]"; document.getElementById('btn-selesai').style.display = 'none';
+            bukaHalamanSukses();
+        }
+
+        function bukaHalamanSukses() {
+            const halamanKuis = document.getElementById('halaman-kuis'); const halamanSukses = document.getElementById('halaman-sukses');
+            clearInterval(intervalTimerKuis); halamanKuis.style.display = 'none'; halamanSukses.classList.add('active');
+            const emailInput = document.getElementById('email').value; document.getElementById('sukses-email').innerText = emailInput; playFanfare(); createConfetti();
+        }
+
+        // HALAMAN ADMIN: KONEKSI FIREBASE
+        // =========================================
+        function simpanDataPeserta() {
+            const nama = document.getElementById('nama').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value;
+            const kartuImg = document.querySelector('#upload-box img');
+            const kartuPAA = kartuImg ? kartuImg.src : 'Tidak ada';
+            const jawaban = {};
+            for (let i = 1; i <= 20; i++) { const selected = document.querySelector(`input[name="soal${i}"]:checked`); jawaban[`soal${i}`] = selected ? selected.value : 'Tidak dijawab'; }
+            const dataPeserta = { nama: nama, username: username, password: password, email: email, kartuPAA: kartuPAA, jawaban: jawaban, waktuSelesai: new Date().toLocaleString() };
+            db.collection("peserta").doc(nama).set(dataPeserta).then(() => { showToast("Data berhasil dikirim ke database cloud!", "success"); }).catch((error) => { console.error("Error menulis dokumen: ", error); showToast("Gagal menyimpan ke cloud!", "error"); });
+        }
+
+        function muatDaftarPeserta() {
+            const daftarDiv = document.getElementById('daftar-peserta'); daftarDiv.innerHTML = '<p style="text-align: center;">Memuat data...</p>';
+            db.collection("peserta").get().then((querySnapshot) => {
+                daftarDiv.innerHTML = '';
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const item = document.createElement('div');
+                    item.style.cssText = "border: 1px solid #ccc; border-radius: 5px; padding: 15px; margin-bottom: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #f9f9f9;";
+                    item.innerHTML = `<div><strong style="font-size: 18px;">${data.nama}</strong><br><span style="color: #666;">Username: ${data.username} | Email: ${data.email}</span></div><span style="color: #888; font-size: 12px;">${data.waktuSelesai}</span>`;
+                    item.onclick = () => lihatDetailPeserta(doc.id);
+                    daftarDiv.appendChild(item);
+                });
+                if (daftarDiv.children.length === 0) { daftarDiv.innerHTML = '<p style="text-align: center; color: #888;">Belum ada data peserta.</p>'; }
+            }).catch((error) => { console.error("Error membaca data: ", error); daftarDiv.innerHTML = '<p style="text-align: center; color: red;">Gagal memuat data dari server!</p>'; });
+        }
+
+        function lihatDetailPeserta(docId) {
+            db.collection("peserta").doc(docId).get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('daftar-peserta').style.display = 'none'; document.getElementById('detail-peserta').style.display = 'block';
+                    document.getElementById('detail-nama').innerText = data.nama;
+                    let infoHTML = `<p><strong>Username:</strong> ${data.username}</p><p><strong>Password:</strong> ${data.password}</p><p><strong>Email:</strong> ${data.email}</p><p><strong>Waktu Selesai:</strong> ${data.waktuSelesai}</p><hr><h3>Jawaban Kuis:</h3>`;
+                    for (let i = 1; i <= 20; i++) { infoHTML += `<p style="font-size: 14px;"><strong>Soal ${i}:</strong> ${data.jawaban[`soal${i}`] || 'Tidak dijawab'}</p>`; }
+                    document.getElementById('detail-info').innerHTML = infoHTML;
+                    const kartuDiv = document.getElementById('detail-kartu');
+                    if (data.kartuPAA && data.kartuPAA !== 'Tidak ada') { kartuDiv.innerHTML = `<img src="${data.kartuPAA}" style="width: 100%; border-radius: 5px;">`; } else { kartuDiv.innerHTML = '<p style="color: #888;">Kartu PAA tidak ditemukan.</p>'; }
+                } else { showToast("Data tidak ditemukan!", "error"); }
+            }).catch((error) => { console.error("Error membaca detail: ", error); });
+        }
+
+        function kembaliKeDaftar() { document.getElementById('detail-peserta').style.display = 'none'; document.getElementById('daftar-peserta').style.display = 'block'; muatDaftarPeserta(); }
+
+        function hapusPeserta() {
+            const nama = document.getElementById('detail-nama').innerText;
+            const konfirmasi = confirm(`Yakin ingin menghapus data peserta "${nama}"?`);
+            if (konfirmasi) {
+                db.collection("peserta").doc(nama).delete().then(() => { showToast(`Data ${nama} berhasil dihapus!`, "success"); kembaliKeDaftar(); }).catch((error) => { console.error("Error menghapus: ", error); showToast("Gagal menghapus dari cloud!", "error"); });
+            }
+        }
+
+        function hapusSemuaPeserta() {
+            const konfirmasi = confirm("Yakin ingin menghapus SEMUA data peserta dari cloud?");
+            if (konfirmasi) {
+                db.collection("peserta").get().then((querySnapshot) => {
+                    const batch = db.batch();
+                    querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
+                    return batch.commit();
+                }).then(() => { showToast("Semua data berhasil dihapus!", "success"); muatDaftarPeserta(); kembaliKeDaftar(); }).catch((error) => { console.error("Error menghapus semua: ", error); showToast("Gagal menghapus semua data!", "error"); });
+            }
+        }
+
+        function eksporSemuaData() {
+            const semuaData = [];
+            db.collection("peserta").get().then((querySnapshot) => {
+                querySnapshot.forEach((doc) => { semuaData.push(doc.data()); });
+                if (semuaData.length === 0) { showToast("Tidak ada data untuk diekspor!", "error"); return; }
+                const blob = new Blob([JSON.stringify(semuaData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a'); link.href = url; link.download = `Semua_Data_Peserta_EPAT.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+                showToast("Semua data berhasil diekspor!", "success");
+            }).catch((error) => { console.error("Error mengekspor: ", error); showToast("Gagal mengekspor data!", "error"); });
+        }
+
+        function unduhFilePeserta() {
+            const nama = document.getElementById('detail-nama').innerText;
+            db.collection("peserta").doc(nama).get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    let isiFile = "=== DATA PESERTA EPAT ===\n"; isiFile += `Nama: ${data.nama}\n`; isiFile += `Username: ${data.username}\n`; isiFile += `Password: ${data.password}\n`; isiFile += `Email: ${data.email}\n`; isiFile += `Waktu Selesai: ${data.waktuSelesai}\n`; isiFile += `\n=== JAWABAN KUIS ===\n`; for (let i = 1; i <= 20; i++) { isiFile += `Soal ${i}: ${data.jawaban[`soal${i}`] || 'Tidak dijawab'}\n`; } isiFile += `\n=== KARTU PAA ===\n`; isiFile += data.kartuPAA !== 'Tidak ada' ? "Gambar Kartu PAA tersimpan di database.\n" : "Kartu PAA tidak ditemukan.\n";
+                    const blob = new Blob([isiFile], { type: 'text/plain' }); const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a'); link.href = url; link.download = `${data.nama}.txt`; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+                    showToast("File berhasil diunduh!", "success");
+                } else { showToast("Data tidak ditemukan!", "error"); }
+            }).catch((error) => { console.error("Error mengunduh: ", error); showToast("Gagal mengunduh file!", "error"); });
+        }
+
+        function pindahHalamanAdmin(halaman) {
+            const halamanForm = document.getElementById('halaman-formulir'); const halamanZip = document.getElementById('halaman-zip'); const halamanKuis = document.getElementById('halaman-kuis'); const halamanAdmin = document.getElementById('halaman-admin'); const panelAdmin = document.getElementById('panel-admin');
+            halamanForm.style.display = 'none'; halamanZip.classList.remove('active'); halamanZip.style.display = 'none'; halamanKuis.style.display = 'none'; halamanAdmin.style.display = 'none';
+            if (halaman === 1) { halamanForm.style.display = 'block'; halamanForm.style.opacity = '1'; }
+            else if (halaman === 2) { halamanZip.style.display = 'flex'; halamanZip.classList.add('active'); clearInterval(intervalTimerKuis); document.getElementById('timer').style.display = 'block'; document.getElementById('timer').innerText = "10"; document.querySelector('.loading-text').style.display = 'block'; document.getElementById('kode-wrapper').style.display = 'none'; mulaiTimer(); }
+            else if (halaman === 3) { halamanKuis.style.display = 'block'; document.getElementById('timer-toggle').checked = false; document.getElementById('kuis-soal-container').style.display = 'none'; document.getElementById('waktu-kuis').innerText = "Waktu: 90 Menit"; document.getElementById('timer-kuis').innerText = "Timer: [90 menit]"; document.getElementById('btn-selesai').style.display = 'none'; }
+            else if (halaman === 4) { halamanAdmin.style.display = 'block'; muatDaftarPeserta(); window.scrollTo(0, 0); }
+            panelAdmin.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
